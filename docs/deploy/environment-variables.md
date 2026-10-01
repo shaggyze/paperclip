@@ -186,6 +186,8 @@ configuration fails closed.
 | `PAPERCLIP_SECRETS_MASTER_KEY` | (from file) | 32-byte encryption key (base64/hex/raw) |
 | `PAPERCLIP_SECRETS_MASTER_KEY_FILE` | `~/.paperclip/.../secrets/master.key` | Path to key file |
 | `PAPERCLIP_SECRETS_STRICT_MODE` | `false` | Require secret refs for sensitive env vars |
+| `PAPERCLIP_ENV_FILE` | (unset) | Docker entrypoint: `KEY=VALUE` file loaded before start, e.g. rendered by the [Infisical Agent](./infisical.md) |
+| `PAPERCLIP_ENV_FILE_WAIT` | `60` | Seconds the entrypoint waits for `PAPERCLIP_ENV_FILE` to appear |
 
 ## Agent Runtime (Injected into agent processes)
 

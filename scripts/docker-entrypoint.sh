@@ -1,6 +1,29 @@
 #!/bin/sh
 set -e
 
+# Optional secrets env file (e.g. rendered by the Infisical Agent sidecar, see
+# docker/docker-compose.infisical.yml). Lines are KEY=VALUE; values are taken
+# literally (no shell evaluation), blank lines and #comments are skipped.
+# PAPERCLIP_ENV_FILE_WAIT seconds (default 60) to wait for the first render.
+if [ -n "${PAPERCLIP_ENV_FILE:-}" ]; then
+    wait_left="${PAPERCLIP_ENV_FILE_WAIT:-60}"
+    while [ ! -s "$PAPERCLIP_ENV_FILE" ] && [ "$wait_left" -gt 0 ]; do
+        sleep 1
+        wait_left=$((wait_left - 1))
+    done
+    if [ -s "$PAPERCLIP_ENV_FILE" ]; then
+        while IFS= read -r line || [ -n "$line" ]; do
+            case "$line" in
+                ''|'#'*) continue ;;
+                *=*) export "$line" ;;
+            esac
+        done < "$PAPERCLIP_ENV_FILE"
+        echo "docker-entrypoint.sh: loaded environment from $PAPERCLIP_ENV_FILE" >&2
+    else
+        echo "docker-entrypoint.sh: PAPERCLIP_ENV_FILE=$PAPERCLIP_ENV_FILE not found; continuing without it" >&2
+    fi
+fi
+
 # Capture runtime UID/GID from environment variables, defaulting to 1000
 PUID=${USER_UID:-1000}
 PGID=${USER_GID:-1000}

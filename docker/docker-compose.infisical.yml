@@ -1,0 +1,58 @@
+# Infisical Agent + Proxy overlay for docker/docker-compose.yml.
+#
+#   docker compose -f docker/docker-compose.yml -f docker/docker-compose.infisical.yml up -d
+#
+# - infisical-agent  authenticates with a Universal Auth machine identity, keeps the
+#                    access token fresh, and renders Paperclip's secrets to
+#                    /run/infisical/paperclip.env (re-rendered every 5m).
+# - infisical-proxy  caching proxy for the Infisical API on the internal network.
+#                    Agents/tools use INFISICAL_API_URL=http://infisical-proxy:8081 with
+#                    the token in /run/infisical/access-token, and keep getting cached
+#                    secrets if Infisical is briefly unreachable.
+# - server           loads the rendered env file at start (PAPERCLIP_ENV_FILE).
+#
+# Setup: see docs/deploy/infisical.md.
+
+services:
+  infisical-agent:
+    image: infisical/cli:${INFISICAL_CLI_VERSION:-latest}
+    entrypoint: ["infisical"]
+    command: ["agent", "--config", "/etc/infisical/agent.yaml"]
+    restart: unless-stopped
+    volumes:
+      - ./infisical/agent.yaml:/etc/infisical/agent.yaml:ro
+      - ./infisical/paperclip.env.tmpl:/etc/infisical/paperclip.env.tmpl:ro
+      # client-id / client-secret files for the machine identity (never commit these)
+      - ${INFISICAL_CREDENTIALS_DIR:-./infisical/credentials}:/etc/infisical/credentials:ro
+      - infisical-run:/run/infisical
+
+  infisical-proxy:
+    image: infisical/cli:${INFISICAL_CLI_VERSION:-latest}
+    entrypoint: ["infisical"]
+    command:
+      - proxy
+      - start
+      - --domain=${INFISICAL_DOMAIN:-https://app.infisical.com}
+      - --listen-address=0.0.0.0:8081
+      # Plain HTTP is only reachable on the compose network (no published port).
+      - --tls-enabled=false
+    restart: unless-stopped
+    expose:
+      - "8081"
+
+  server:
+    environment:
+      PAPERCLIP_ENV_FILE: /run/infisical/paperclip.env
+      PAPERCLIP_ENV_FILE_WAIT: "${PAPERCLIP_ENV_FILE_WAIT:-60}"
+      INFISICAL_API_URL: http://infisical-proxy:8081
+      INFISICAL_TOKEN_FILE: /run/infisical/access-token
+    volumes:
+      - infisical-run:/run/infisical:ro
+    depends_on:
+      infisical-agent:
+        condition: service_started
+      infisical-proxy:
+        condition: service_started
+
+volumes:
+  infisical-run:

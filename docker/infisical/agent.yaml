@@ -1,0 +1,29 @@
+# Infisical Agent config for the Paperclip compose overlay.
+# Docs: https://infisical.com/docs/integrations/platforms/infisical-agent
+infisical:
+  # Self-hosted Infisical? Point this at it (same value as INFISICAL_DOMAIN).
+  address: "https://app.infisical.com"
+  retry-strategy:
+    max-retries: 5
+    max-delay: "10s"
+    base-delay: "500ms"
+
+auth:
+  type: "universal-auth"
+  config:
+    client-id: "/etc/infisical/credentials/client-id"
+    client-secret: "/etc/infisical/credentials/client-secret"
+    remove_client_secret_on_read: false
+
+sinks:
+  # Fresh access token for agents/tools that call Infisical (via infisical-proxy).
+  - type: "file"
+    config:
+      path: "/run/infisical/access-token"
+
+templates:
+  # KEY=VALUE env file loaded by the Paperclip server at startup.
+  - source-path: "/etc/infisical/paperclip.env.tmpl"
+    destination-path: "/run/infisical/paperclip.env"
+    config:
+      polling-interval: "5m"
