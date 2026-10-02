@@ -112,6 +112,18 @@ import {
   models as openCodeModels,
 } from "@paperclipai/adapter-opencode-local";
 import {
+  execute as openRouterExecute,
+  testEnvironment as openRouterTestEnvironment,
+  listOpenRouterModels,
+  listOpenRouterSkills,
+  syncOpenRouterSkills,
+  getConfigSchema as getOpenRouterConfigSchema,
+} from "@paperclipai/adapter-openrouter/server";
+import {
+  agentConfigurationDoc as openRouterAgentConfigurationDoc,
+  models as openRouterModels,
+} from "@paperclipai/adapter-openrouter";
+import {
   execute as openclawGatewayExecute,
   testEnvironment as openclawGatewayTestEnvironment,
 } from "@paperclipai/adapter-openclaw-gateway/server";
@@ -833,6 +845,24 @@ const openCodeLocalAdapter: ServerAdapterModule = {
   agentConfigurationDoc: openCodeAgentConfigurationDoc,
 };
 
+const openRouterAdapter: ServerAdapterModule = {
+  type: "openrouter",
+  // Tools run in-process over the Paperclip REST API; no local CLI or shell.
+  runtimeToolDelivery: "invocation_context",
+  execute: openRouterExecute,
+  testEnvironment: openRouterTestEnvironment,
+  listSkills: listOpenRouterSkills,
+  syncSkills: syncOpenRouterSkills,
+  models: openRouterModels,
+  listModels: listOpenRouterModels,
+  supportsLocalAgentJwt: true,
+  supportsInstructionsBundle: true,
+  instructionsPathKey: "instructionsFilePath",
+  requiresMaterializedRuntimeSkills: false,
+  agentConfigurationDoc: openRouterAgentConfigurationDoc,
+  getConfigSchema: getOpenRouterConfigSchema,
+};
+
 const piLocalAdapter: ServerAdapterModule = {
   type: "pi_local",
   runtimeToolDelivery: "environment",
@@ -871,6 +901,7 @@ function registerBuiltInAdapters() {
     codexLocalAdapter,
     paperclipRunnerAdapter,
     openCodeLocalAdapter,
+    openRouterAdapter,
     piLocalAdapter,
     cursorCloudAdapter,
     cursorLocalAdapter,

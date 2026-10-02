@@ -16,6 +16,7 @@ export default defineConfig({
       "packages/adapters/kimi-local",
       "packages/adapters/openclaw-gateway",
       "packages/adapters/opencode-local",
+      "packages/adapters/openrouter",
       "packages/adapters/pi-local",
       "packages/plugins/sdk",
       "packages/plugins/create-paperclip-plugin",

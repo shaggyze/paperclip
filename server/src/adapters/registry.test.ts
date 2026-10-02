@@ -71,6 +71,7 @@ describe("built-in runtime connection tool delivery", () => {
     ["kimi_local", "environment"],
     ["openclaw_gateway", "invocation_context"],
     ["opencode_local", "environment"],
+    ["openrouter", "invocation_context"],
     ["paperclip_runner", "environment"],
     ["pi_local", "environment"],
     ["process", "environment"],
