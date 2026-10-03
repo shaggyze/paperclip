@@ -1,7 +1,6 @@
 import { createHash } from "node:crypto";
 import { HttpError, unprocessable } from "../errors.js";
 import { mkdtemp, mkdir, writeFile, readFile, rm } from "node:fs/promises";
-import os from "node:os";
 import path from "node:path";
 import { and, eq } from "drizzle-orm";
 import { type Db, companySecrets, connectionGrants } from "@paperclipai/db";
@@ -10,6 +9,7 @@ import {
   type AiConnectionBinding,
 } from "@paperclipai/shared";
 import { aiConnectionService } from "./ai-connections.js";
+import { resolvePaperclipInstanceRoot } from "../home-paths.js";
 import { secretService } from "./secrets.js";
 import { decideCodexAuthMerge } from "@paperclipai/adapter-codex-local/server";
 import type { AdapterExecutionTarget } from "@paperclipai/adapter-utils/execution-target";
@@ -252,11 +252,12 @@ export async function prepareManagedAiRuntime(
         "The selected default changed. Retry this execution.",
       );
     const value = await service.credential(selection);
+    // Keep the credential home out of the OS temp dir: Codex refuses to
+    // create its PATH helper binaries when CODEX_HOME is under /tmp.
+    const homesRoot = path.join(resolvePaperclipInstanceRoot(), "tmp", "ai-homes");
+    await mkdir(homesRoot, { recursive: true, mode: 0o700 });
     home = await mkdtemp(
-      path.join(
-        os.tmpdir(),
-        `paperclip-ai-${input.companyId}-${selection.grant.id}-`,
-      ),
+      path.join(homesRoot, `paperclip-ai-${input.companyId}-${selection.grant.id}-`),
     );
     const providerHome = path.join(home, "provider");
     await mkdir(providerHome, { mode: 0o700 });

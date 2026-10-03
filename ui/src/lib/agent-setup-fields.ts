@@ -11,6 +11,7 @@ export const SETUP_CREDENTIAL_KEYS: Record<string, string> = {
   gemini_local: "GEMINI_API_KEY",
   kimi_local: "KIMI_MODEL_API_KEY",
   hermes_gateway: "API_SERVER_KEY",
+  openrouter: "OPENROUTER_API_KEY",
 };
 
 export const HERMES_PROVIDER_KEYS: Record<string, string> = {

@@ -7,6 +7,7 @@ import {
   runChildProcess,
 } from "@paperclipai/adapter-utils/server-utils";
 import { isValidOpenCodeModelId } from "../index.js";
+import { firstNonEmptyLine } from "./output-lines.js";
 
 const MODELS_CACHE_TTL_MS = 60_000;
 const MODELS_DISCOVERY_TIMEOUT_MS = 20_000;
@@ -68,15 +69,6 @@ function dedupeModels(models: AdapterModel[]): AdapterModel[] {
 function sortModels(models: AdapterModel[]): AdapterModel[] {
   return [...models].sort((a, b) =>
     a.id.localeCompare(b.id, "en", { numeric: true, sensitivity: "base" }),
-  );
-}
-
-function firstNonEmptyLine(text: string): string {
-  return (
-    text
-      .split(/\r?\n/)
-      .map((line) => line.trim())
-      .find(Boolean) ?? ""
   );
 }
 
