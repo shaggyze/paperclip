@@ -45,6 +45,7 @@ import {
 import detectPort from "detect-port";
 import { createApp } from "./app.js";
 import { loadConfig } from "./config.js";
+import { loadInfisicalSecretsIntoEnv } from "./secrets/infisical-env.js";
 import { logger } from "./middleware/logger.js";
 import { setStartupRecoveryPhase } from "./startup-recovery-state.js";
 import {
@@ -215,6 +216,12 @@ async function startServerWithDatabaseTeardown(
   // sentry.ts.
   await sentryReady;
   ensureDecisionSigningSecret();
+  const infisical = await loadInfisicalSecretsIntoEnv();
+  if (infisical.status === "loaded") {
+    logger.info({ keys: infisical.loadedKeys }, infisical.message);
+  } else if (infisical.status === "failed") {
+    logger.warn(infisical.message);
+  }
   let config = loadConfig();
   initTelemetry({ enabled: config.telemetryEnabled });
   if (process.env.PAPERCLIP_SECRETS_PROVIDER === undefined) {

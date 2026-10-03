@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { asBoolean } from "@paperclipai/adapter-utils/server-utils";
+import { builtinGatewayProviders } from "./gateway-providers.js";
 
 type PreparedOpenCodeRuntimeConfig = {
   env: Record<string, string>;
@@ -167,9 +168,23 @@ export async function prepareOpenCodeRuntimeConfig(input: {
     notes,
   );
   const existingProvider = isPlainObject(existingConfig.provider) ? existingConfig.provider : {};
-  let nextProvider = gatewayProviders
-    ? { ...existingProvider, ...gatewayProviders }
-    : existingProvider;
+  // Ollama and Cloudflare AI Gateway defaults sit below the user's opencode.json
+  // and PAPERCLIP_OPENCODE_PROVIDERS, so an explicit definition always wins.
+  const builtinProviders = builtinGatewayProviders(
+    resolveEnv,
+    typeof input.config.model === "string" ? input.config.model.trim() : null,
+  );
+  const builtinKeys = Object.keys(builtinProviders).filter(
+    (key) => !(key in existingProvider) && !(gatewayProviders && key in gatewayProviders),
+  );
+  let nextProvider = {
+    ...Object.fromEntries(builtinKeys.map((key) => [key, builtinProviders[key]])),
+    ...existingProvider,
+    ...(gatewayProviders ?? {}),
+  };
+  if (builtinKeys.length > 0) {
+    notes.push(`Injected built-in OpenCode provider(s): ${builtinKeys.join(", ")}.`);
+  }
   if (gatewayProviders) {
     notes.push(
       `Injected ${Object.keys(gatewayProviders).length} custom OpenCode provider(s) from PAPERCLIP_OPENCODE_PROVIDERS: ${Object.keys(gatewayProviders).join(", ")}.`,

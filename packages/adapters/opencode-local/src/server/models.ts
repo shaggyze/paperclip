@@ -1,5 +1,7 @@
 import { createHash } from "node:crypto";
+import fs from "node:fs/promises";
 import os from "node:os";
+import path from "node:path";
 import type { AdapterModel } from "@paperclipai/adapter-utils";
 import {
   asString,
@@ -7,6 +9,7 @@ import {
   runChildProcess,
 } from "@paperclipai/adapter-utils/server-utils";
 import { isValidOpenCodeModelId } from "../index.js";
+import { isBuiltinGatewayModel, listBuiltinGatewayModels } from "./gateway-providers.js";
 
 const MODELS_CACHE_TTL_MS = 60_000;
 const MODELS_DISCOVERY_TIMEOUT_MS = 20_000;
@@ -258,6 +261,22 @@ async function refreshOpenCodeModelsCached(input: {
   return models;
 }
 
+async function runtimeConfigDefinesProvider(
+  env: Record<string, string>,
+  provider: string,
+): Promise<boolean> {
+  const configHome = env.XDG_CONFIG_HOME?.trim();
+  if (!configHome) return false;
+  try {
+    const raw = await fs.readFile(path.join(configHome, "opencode", "opencode.json"), "utf8");
+    const parsed = JSON.parse(raw) as { provider?: Record<string, unknown> };
+    const entry = parsed.provider?.[provider];
+    return typeof entry === "object" && entry !== null;
+  } catch {
+    return false;
+  }
+}
+
 export function isTruthyEnvFlag(value: string | undefined): boolean {
   if (value === undefined) return false;
   const v = value.trim().toLowerCase();
@@ -282,6 +301,16 @@ export async function ensureOpenCodeModelConfiguredAndAvailable(input: {
     isTruthyEnvFlag(
       env.OPENCODE_ALLOW_ALL_MODELS ?? process.env.OPENCODE_ALLOW_ALL_MODELS,
     )
+  ) {
+    return [{ id: model, label: model }];
+  }
+
+  // Ollama and Cloudflare AI Gateway providers exist only in the runtime config
+  // that prepareOpenCodeRuntimeConfig wrote, so `opencode models` can omit them.
+  // Skip the probe only when that runtime config really defines the provider.
+  if (
+    isBuiltinGatewayModel(model, (name) => env[name] ?? process.env[name]) &&
+    (await runtimeConfigDefinesProvider(env, model.slice(0, model.indexOf("/"))))
   ) {
     return [{ id: model, label: model }];
   }
@@ -354,11 +383,11 @@ export async function ensureOpenCodeModelConfiguredAndAvailable(input: {
 }
 
 export async function listOpenCodeModels(): Promise<AdapterModel[]> {
-  try {
-    return await discoverOpenCodeModelsCached();
-  } catch {
-    return [];
-  }
+  const [discovered, gateway] = await Promise.all([
+    discoverOpenCodeModelsCached().catch(() => [] as AdapterModel[]),
+    listBuiltinGatewayModels(),
+  ]);
+  return dedupeModels([...gateway, ...discovered]);
 }
 
 export function resetOpenCodeModelsCacheForTests() {
